@@ -32,9 +32,9 @@ const DATA = [
     name: "Motores de juego web",
     color: "#E36B5B",
     tools: [
-      { name: "GDevelop", url: "https://editor.gdevelop.io/" },
-      { name: "PlayCanvas", url: "https://playcanvas.com/" },
-      { name: "Construct 3", url: "https://editor.construct.net/" },
+      { name: "Bitsy", url: "https://make.bitsy.org/editor/" },
+      { name: "TIC-80", url: "https://tic80.com/create" },
+      { name: "Kaplay Playground", url: "https://play.kaplayjs.com/" },
     ]
   },
 ];
