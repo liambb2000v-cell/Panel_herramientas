@@ -32,8 +32,8 @@ const BLOCKED_RESPONSE_HEADERS = new Set([
   'set-cookie', // evita conflictos de cookies entre orígenes distintos
 ]);
 
-function serveStatic(req, res) {
-  const filePath = req.url === '/' ? '/index.html' : req.url;
+function serveStatic(pathname, res) {
+  const filePath = pathname === '/' ? '/index.html' : pathname;
   const fullPath = path.join(PUBLIC_DIR, path.normalize(filePath).replace(/^(\.\.[/\\])+/, ''));
 
   fs.readFile(fullPath, (err, data) => {
@@ -48,6 +48,8 @@ function serveStatic(req, res) {
       // Permite explícitamente que ESTA página se incruste en un iframe
       // en cualquier otro sitio (Google Sites, otros proyectos, etc.)
       'Content-Security-Policy': "frame-ancestors *",
+      // Evita que el navegador guarde una copia vieja del archivo
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
     });
     res.end(data);
   });
@@ -143,10 +145,9 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  serveStatic(req, res);
+  serveStatic(reqUrl.pathname, res);
 });
 
 server.listen(PORT, () => {
   console.log(`Panel de herramientas corriendo en http://localhost:${PORT}`);
 });
-
