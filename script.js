@@ -22,6 +22,7 @@ const DATA = [
     name: "Asistentes de IA",
     color: "#B98CD1",
     tools: [
+      { name: "Chat de IA (tu API key)", type: "ai-chat" },
       { name: "Claude", url: "https://claude.ai/new" },
       { name: "ChatGPT", url: "https://chatgpt.com/" },
       { name: "Perplexity", url: "https://www.perplexity.ai/" },
@@ -109,6 +110,12 @@ function init() {
     if (tool.type === 'native') {
       openNewBtn.style.display = 'none';
       renderPixelEditor(viewport);
+      return;
+    }
+
+    if (tool.type === 'ai-chat') {
+      openNewBtn.style.display = 'none';
+      renderAIChat(viewport);
       return;
     }
 
@@ -287,3 +294,147 @@ function renderPixelEditor(viewport) {
   computeDisplaySize();
   render();
 }
+
+function renderAIChat(viewport) {
+  viewport.innerHTML = `
+    <div class="ai-chat">
+      <div class="ai-settings">
+        <input type="text" class="ai-base-url" placeholder="URL base (ej. https://router.huggingface.co/v1/chat/completions)">
+        <input type="text" class="ai-model" placeholder="Modelo (ej. meta-llama/Llama-3.1-8B-Instruct)">
+        <input type="password" class="ai-key" placeholder="Tu API key">
+        <button class="ai-save">Guardar</button>
+        <span class="ai-key-status"></span>
+      </div>
+      <div class="ai-messages"></div>
+      <form class="ai-input-row">
+        <textarea class="ai-input" placeholder="Escribe un mensaje... (Enter para enviar, Shift+Enter para salto de línea)" rows="1"></textarea>
+        <button type="submit" class="ai-send">Enviar</button>
+      </form>
+    </div>
+  `;
+
+  const root = viewport.querySelector('.ai-chat');
+  const baseUrlInput = root.querySelector('.ai-base-url');
+  const modelInput = root.querySelector('.ai-model');
+  const keyInput = root.querySelector('.ai-key');
+  const statusEl = root.querySelector('.ai-key-status');
+  const messagesEl = root.querySelector('.ai-messages');
+  const form = root.querySelector('.ai-input-row');
+  const textarea = root.querySelector('.ai-input');
+  const sendBtn = root.querySelector('.ai-send');
+
+  const STORAGE_KEY = 'ph_ai_chat_config';
+  let history = [];
+
+  function loadConfig() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      baseUrlInput.value = saved.baseUrl || 'https://router.huggingface.co/v1/chat/completions';
+      modelInput.value = saved.model || '';
+      keyInput.value = saved.key || '';
+      statusEl.textContent = saved.key ? 'Config. guardada ✓' : '';
+    } catch (e) {
+      baseUrlInput.value = 'https://router.huggingface.co/v1/chat/completions';
+    }
+  }
+
+  function saveConfig() {
+    const config = {
+      baseUrl: baseUrlInput.value.trim(),
+      model: modelInput.value.trim(),
+      key: keyInput.value.trim(),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    statusEl.textContent = 'Guardado ✓';
+    setTimeout(() => { statusEl.textContent = ''; }, 2000);
+  }
+
+  root.querySelector('.ai-save').addEventListener('click', saveConfig);
+
+  function addBubble(role, text) {
+    const bubble = document.createElement('div');
+    bubble.className = 'ai-bubble ai-' + role;
+    bubble.textContent = text;
+    messagesEl.appendChild(bubble);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return bubble;
+  }
+
+  function autoResize() {
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 140) + 'px';
+  }
+  textarea.addEventListener('input', autoResize);
+  textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = textarea.value.trim();
+    if (!text) return;
+
+    const config = {
+      baseUrl: baseUrlInput.value.trim(),
+      model: modelInput.value.trim(),
+      key: keyInput.value.trim(),
+    };
+
+    if (!config.baseUrl || !config.model || !config.key) {
+      addBubble('error', 'Completa URL base, modelo y API key, y toca "Guardar" antes de enviar mensajes.');
+      return;
+    }
+
+    addBubble('user', text);
+    history.push({ role: 'user', content: text });
+    textarea.value = '';
+    autoResize();
+
+    sendBtn.disabled = true;
+    const thinking = addBubble('assistant', 'Pensando...');
+
+    try {
+      const response = await fetch(config.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + config.key,
+        },
+        body: JSON.stringify({
+          model: config.model,
+          messages: history,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const msg = (data && data.error && (data.error.message || data.error)) || ('Error HTTP ' + response.status);
+        thinking.textContent = 'Error: ' + msg;
+        thinking.className = 'ai-bubble ai-error';
+        return;
+      }
+
+      const reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+      if (reply) {
+        thinking.textContent = reply;
+        thinking.className = 'ai-bubble ai-assistant';
+        history.push({ role: 'assistant', content: reply });
+      } else {
+        thinking.textContent = 'La API respondió pero no encontré el texto esperado en el formato de respuesta.';
+        thinking.className = 'ai-bubble ai-error';
+      }
+    } catch (err) {
+      thinking.textContent = 'No se pudo conectar (' + err.message + '). Puede que la API bloquee peticiones directas desde el navegador (CORS).';
+      thinking.className = 'ai-bubble ai-error';
+    } finally {
+      sendBtn.disabled = false;
+    }
+  });
+
+  loadConfig();
+}
+
