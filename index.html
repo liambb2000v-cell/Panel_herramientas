@@ -1,83 +1,45 @@
 <!DOCTYPE html>
 <html lang="es">
-    <head>
-            <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taller — Panel de herramientas</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-                    <title>Dev Hub</title>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">// taller</div>
+      <div class="brand-title">Panel de herramientas</div>
+      <div class="brand-sub">Editores, arte y motores en un solo lugar</div>
+    </div>
 
-                        <link rel="stylesheet" href="style.css">
-    </head>
+    <div id="categories"></div>
 
-    <body>
+    <div class="sidebar-footer">
+      Las herramientas se cargan a través de un proxy local. Si alguna requiere que inicies sesión y no funciona bien dentro del panel, usa "Abrir en pestaña nueva".
+    </div>
+  </aside>
 
-            <header class="topbar">
-                        <div class="logo">
-                                        <span>◆</span> Dev Hub
-                        </div>
+  <main class="main">
+    <div class="topbar">
+      <span class="status-dot" id="statusDot"></span>
+      <span class="current-tool" id="currentTool">Elige una herramienta →</span>
+      <a class="open-new" id="openNewBtn" target="_blank" rel="noopener" style="display:none;">Abrir en pestaña nueva ↗</a>
+    </div>
+    <div class="viewport-wrap">
+      <div class="viewport" id="viewport">
+        <div class="empty-state" id="emptyState">
+          <div class="glyph">[ ]</div>
+          <p>Selecciona una herramienta de la izquierda para cargarla aquí. Cada categoría tiene más de una opción por si alguna falla.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
 
-                                <div class="status">
-                                                ● ONLINE
-                                </div>
-                            </header>
-
-
-                                <main>
-
-                                            <section class="hero">
-                                                            <p class="eyebrow">PERSONAL DEVELOPER HUB</p>
-
-                                                                        <h1>
-                                                                                            Your tools.<br>
-                                                                                                            <span>One place.</span>
-                                                                        </h1>
-
-                                                                                    <p class="description">
-                                                                                                        Accede rápidamente a tus herramientas de desarrollo,
-                                                                                                                        IA, creación de juegos y edición.
-                                                                                    </p>
-
-                                                                                                <div class="search-box">
-                                                                                                                    <span>⌕</span>
-                                                                                                                                    <input
-                                                                                                                                                        type="text"
-                                                                                                                                                                            id="searchInput"
-                                                                                                                                                                                                placeholder="Buscar herramientas..."
-                                                                                                                                                                                                                >
-                                                                                                </div>
-                                                                                            </section>
-
-
-                                                                                                    <section class="tools-section">
-
-                                                                                                                    <div class="section-title">
-                                                                                                                                        <h2>Development</h2>
-                                                                                                                                                        <span>01</span>
-                                                                                                                    </div>
-
-                                                                                                                                <div class="tools-grid" id="developmentTools">
-
-                                                                                                                                                    <article class="tool-card">
-                                                                                                                                                                            <div class="tool-icon">⌘</div>
-
-                                                                                                                                                                                                <div class="tool-info">
-                                                                                                                                                                                                                            <h3>VS Code Web</h3>
-                                                                                                                                                                                                                                                    <p>Editor de código en el navegador.</p>
-                                                                                                                                                                                                </div>
-
-                                                                                                                                                                                                                    <a
-                                                                                                                                                                                                                                            href="https://vscode.dev/"
-                                                                                                                                                                                                                                                                    target="_blank"
-                                                                                                                                                                                                                                                                                            class="open-button"
-                                                                                                                                                                                                                                                                                                                >
-                                                                                                                                                                                                                                                                                                                                        →
-                                                                                                                                                                                            </a>
-                                                                                                                                                                                        </article>
-
-
-                                                                                                                                                                                                        <article class="tool-card">
-                                                                                                                                                                                                                                <div class="tool-icon">GH</div>
-
-                                                                                                                                                                                                                                                    <div class="tool-info">
-                                                                                                                                                                                                                                                                                <h3>GitHub</h3>
-                                                                                                                                                                                                                                                                                                        <p>Repositorios y
+<script src="script.js"></script>
+</body>
+</html>
