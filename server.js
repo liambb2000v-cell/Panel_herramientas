@@ -43,7 +43,12 @@ function serveStatic(req, res) {
       return;
     }
     const ext = path.extname(fullPath);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'application/octet-stream',
+      // Permite explícitamente que ESTA página se incruste en un iframe
+      // en cualquier otro sitio (Google Sites, otros proyectos, etc.)
+      'Content-Security-Policy': "frame-ancestors *",
+    });
     res.end(data);
   });
 }
@@ -144,3 +149,4 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`Panel de herramientas corriendo en http://localhost:${PORT}`);
 });
+
