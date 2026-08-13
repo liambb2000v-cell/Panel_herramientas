@@ -6,6 +6,7 @@ const DATA = [
       { name: "StackBlitz", url: "https://stackblitz.com/" },
       { name: "CodeSandbox", url: "https://codesandbox.io/" },
       { name: "Replit", url: "https://replit.com/~" },
+      { name: "Babylon.js Playground", url: "https://playground.babylonjs.com/" },
     ]
   },
   {
@@ -16,6 +17,7 @@ const DATA = [
       { name: "Piskel", url: "https://www.piskelapp.com/p/create/" },
       { name: "Pixilart", url: "https://www.pixilart.com/draw" },
       { name: "Lospec Pixel Editor", url: "https://lospec.com/pixel-editor/" },
+      { name: "Blockbench (voxel/3D)", url: "https://web.blockbench.net/" },
     ]
   },
   {
@@ -28,15 +30,20 @@ const DATA = [
       { name: "Perplexity", url: "https://www.perplexity.ai/" },
     ]
   },
-  {
-    name: "Motores de juego web",
-    color: "#E36B5B",
-    tools: [
-      { name: "Bitsy", url: "https://make.bitsy.org/editor/" },
-      { name: "TIC-80", url: "https://tic80.com/create" },
-      { name: "Kaplay Playground", url: "https://play.kaplayjs.com/" },
-    ]
-  },
+  // Categoría "Motores de juego web" cerrada temporalmente (12 ago 2026):
+  // GDevelop/Construct/Godot no cargaban bien en el panel. Descomentar
+  // cuando encontremos una solución mejor, o volver a armar la lista.
+  // {
+  //   name: "Motores de juego web",
+  //   color: "#E36B5B",
+  //   tools: [
+  //     { name: "GDevelop", url: "https://editor.gdevelop.io/" },
+  //     { name: "Construct 3", url: "https://editor.construct.net/" },
+  //     { name: "Flowlab", url: "https://flowlab.io/build" },
+  //     { name: "Bitsy", url: "https://make.bitsy.org/editor/" },
+  //     { name: "Godot Web Editor", url: "https://editor.godotengine.org/" },
+  //   ]
+  // },
 ];
 
 function init() {
