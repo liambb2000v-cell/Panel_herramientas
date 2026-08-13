@@ -1,0 +1,13 @@
+{
+  "name": "panel-de-herramientas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Panel personal de herramientas con proxy para incrustar sitios en iframe",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
