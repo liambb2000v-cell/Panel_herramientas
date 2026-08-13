@@ -108,11 +108,17 @@ function fetchThroughProxy(targetUrl, res, redirectsLeft = 5) {
         let html = buffer.toString('utf8');
         // Inserta <base> para que las rutas relativas y absolutas
         // del sitio sigan apuntando a su dominio real, no al proxy.
-        const baseTag = `<base href="${parsed.origin}${parsed.pathname}">`;
+        let injected = `<base href="${parsed.origin}${parsed.pathname}">`;
+        // Si el sitio no trae su propia meta viewport, se la agregamos.
+        // Sin esto, muchos sitios se renderizan asumiendo un ancho de
+        // escritorio (~980px) y se ven diminutos dentro del iframe.
+        if (!/<meta[^>]+name=["']viewport["']/i.test(html)) {
+          injected += `<meta name="viewport" content="width=device-width, initial-scale=1.0">`;
+        }
         if (/<head[^>]*>/i.test(html)) {
-          html = html.replace(/<head[^>]*>/i, (m) => `${m}${baseTag}`);
+          html = html.replace(/<head[^>]*>/i, (m) => `${m}${injected}`);
         } else {
-          html = baseTag + html;
+          html = injected + html;
         }
         buffer = Buffer.from(html, 'utf8');
       }
