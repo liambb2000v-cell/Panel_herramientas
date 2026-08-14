@@ -37,7 +37,7 @@ const DATA = [
       { name: "PixelForge", url: "https://www.pixelforgegames.net/" },
       { name: "GDevelop", url: "https://editor.gdevelop.io/" },
       { name: "Construct 3", url: "https://editor.construct.net/" },
-      { name: "Flowlab", url: "https://flowlab.io/build" },
+      { name: "Flowlab", url: "https://flowlab.io/" },
       { name: "Bitsy", url: "https://make.bitsy.org/editor/" },
       { name: "Godot Web Editor", url: "https://editor.godotengine.org/" },
     ]
