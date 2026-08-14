@@ -30,20 +30,18 @@ const DATA = [
       { name: "Perplexity", url: "https://www.perplexity.ai/" },
     ]
   },
-  // Categoría "Motores de juego web" cerrada temporalmente (12 ago 2026):
-  // GDevelop/Construct/Godot no cargaban bien en el panel. Descomentar
-  // cuando encontremos una solución mejor, o volver a armar la lista.
-  // {
-  //   name: "Motores de juego web",
-  //   color: "#E36B5B",
-  //   tools: [
-  //     { name: "GDevelop", url: "https://editor.gdevelop.io/" },
-  //     { name: "Construct 3", url: "https://editor.construct.net/" },
-  //     { name: "Flowlab", url: "https://flowlab.io/build" },
-  //     { name: "Bitsy", url: "https://make.bitsy.org/editor/" },
-  //     { name: "Godot Web Editor", url: "https://editor.godotengine.org/" },
-  //   ]
-  // },
+  {
+    name: "Motores de juego web",
+    color: "#E36B5B",
+    tools: [
+      { name: "PixelForge", url: "https://www.pixelforgegames.net/" },
+      { name: "GDevelop", url: "https://editor.gdevelop.io/" },
+      { name: "Construct 3", url: "https://editor.construct.net/" },
+      { name: "Flowlab", url: "https://flowlab.io/build" },
+      { name: "Bitsy", url: "https://make.bitsy.org/editor/" },
+      { name: "Godot Web Editor", url: "https://editor.godotengine.org/" },
+    ]
+  },
 ];
 
 function init() {
