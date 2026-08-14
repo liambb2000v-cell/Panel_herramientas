@@ -32,47 +32,6 @@ const BLOCKED_RESPONSE_HEADERS = new Set([
   'set-cookie', // evita conflictos de cookies entre orígenes distintos
 ]);
 
-// Convierte una URL (relativa, absoluta, lo que sea) en una URL que pasa
-// por nuestro proxy, resuelta contra la URL base de la página/CSS actual.
-function toProxyUrl(rawUrl, baseUrl) {
-  if (!rawUrl) return rawUrl;
-  const trimmed = rawUrl.trim();
-  if (/^(data:|javascript:|mailto:|tel:|#|blob:)/i.test(trimmed)) return rawUrl;
-  try {
-    const abs = new URL(trimmed, baseUrl).toString();
-    return '/proxy?url=' + encodeURIComponent(abs);
-  } catch (e) {
-    return rawUrl;
-  }
-}
-
-// Reescribe url(...) dentro de texto CSS (hojas de estilo completas,
-// bloques <style>, o atributos style="") para que también pasen por el proxy.
-function rewriteCssUrls(css, baseUrl) {
-  return css.replace(/url\(\s*(['"]?)(.*?)\1\s*\)/gi, (m, quote, url) => {
-    const proxied = toProxyUrl(url, baseUrl);
-    return `url(${quote}${proxied}${quote})`;
-  });
-}
-
-// Reescribe src/href/action de etiquetas HTML, además de CSS embebido
-// (bloques <style> y atributos style=""), para que todos los recursos
-// (CSS, imágenes, fuentes, scripts) pasen por el proxy en vez de pedirse
-// directo al sitio original — esto evita bloqueos por Cross-Origin-
-// Resource-Policy que rompían el diseño de varios sitios.
-function rewriteHtmlUrls(html, baseUrl) {
-  html = html.replace(/\b(src|href|action)(\s*=\s*)(["'])(.*?)\3/gi, (m, attr, eq, quote, url) => {
-    return `${attr}${eq}${quote}${toProxyUrl(url, baseUrl)}${quote}`;
-  });
-  html = html.replace(/\bstyle(\s*=\s*)(["'])(.*?)\2/gi, (m, eq, quote, styleContent) => {
-    return `style${eq}${quote}${rewriteCssUrls(styleContent, baseUrl)}${quote}`;
-  });
-  html = html.replace(/(<style[^>]*>)([\s\S]*?)(<\/style>)/gi, (m, open, css, close) => {
-    return open + rewriteCssUrls(css, baseUrl) + close;
-  });
-  return html;
-}
-
 function serveStatic(pathname, res) {
   const filePath = pathname === '/' ? '/index.html' : pathname;
   const fullPath = path.join(PUBLIC_DIR, path.normalize(filePath).replace(/^(\.\.[/\\])+/, ''));
@@ -147,13 +106,8 @@ function fetchThroughProxy(targetUrl, res, redirectsLeft = 5) {
 
       if (contentType.includes('text/html')) {
         let html = buffer.toString('utf8');
-        const baseUrl = parsed.toString();
-        // Reescribe TODOS los recursos (CSS, imágenes, scripts, fuentes)
-        // para que pasen por el proxy, evitando bloqueos por CORP/CORS
-        // cuando el sitio y nuestro dominio son distintos.
-        html = rewriteHtmlUrls(html, baseUrl);
-        // <base> queda como red de seguridad para cualquier URL que se
-        // genere dinámicamente por JS y que la reescritura no alcance.
+        // Inserta <base> para que las rutas relativas y absolutas
+        // del sitio sigan apuntando a su dominio real, no al proxy.
         let injected = `<base href="${parsed.origin}${parsed.pathname}">`;
         // Si el sitio no trae su propia meta viewport, se la agregamos.
         // Sin esto, muchos sitios se renderizan asumiendo un ancho de
@@ -167,11 +121,6 @@ function fetchThroughProxy(targetUrl, res, redirectsLeft = 5) {
           html = injected + html;
         }
         buffer = Buffer.from(html, 'utf8');
-      } else if (contentType.includes('text/css')) {
-        // Las hojas de estilo también pueden referenciar fuentes/imágenes
-        // vía url(...) — se reescriben igual para que pasen por el proxy.
-        const css = rewriteCssUrls(buffer.toString('utf8'), parsed.toString());
-        buffer = Buffer.from(css, 'utf8');
       }
 
       headers['content-length'] = Buffer.byteLength(buffer);
