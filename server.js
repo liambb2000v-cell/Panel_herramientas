@@ -18,7 +18,17 @@ const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
+  '.wasm': 'application/wasm',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.tres': 'text/plain; charset=utf-8',
 };
+
+// Datos del Release de GitHub donde vive el archivo pesado de Godot
+// (godot.editor.wasm, ~82MB) que no cupo en la subida normal del repo.
+const GODOT_WASM_RELEASE_URL =
+  'https://github.com/liambb2000v-cell/Panel_herramientas/releases/download/godot-assets/godot.editor.wasm';
 
 // Encabezados que impiden la incrustación en iframe — se eliminan
 // solo de la respuesta que llega a nuestro propio servidor, nunca
@@ -91,6 +101,8 @@ function serveStatic(pathname, res) {
   const filePath = pathname === '/' ? '/index.html' : pathname;
   const fullPath = path.join(PUBLIC_DIR, path.normalize(filePath).replace(/^(\.\.[/\\])+/, ''));
 
+  const isGodot = pathname.startsWith('/godot-editor/');
+
   fs.readFile(fullPath, (err, data) => {
     if (err) {
       res.writeHead(404, { 'Content-Type': 'text/plain' });
@@ -98,16 +110,77 @@ function serveStatic(pathname, res) {
       return;
     }
     const ext = path.extname(fullPath);
-    res.writeHead(200, {
+    const headers = {
       'Content-Type': MIME[ext] || 'application/octet-stream',
       // Permite explícitamente que ESTA página se incruste en un iframe
       // en cualquier otro sitio (Google Sites, otros proyectos, etc.)
       'Content-Security-Policy': "frame-ancestors *",
       // Evita que el navegador guarde una copia vieja del archivo
       'Cache-Control': 'no-cache, no-store, must-revalidate',
-    });
+    };
+    if (isGodot) {
+      // Godot necesita aislamiento de origen cruzado (SharedArrayBuffer)
+      // para poder correr — estos encabezados solo se aplican aquí,
+      // nunca en el resto del panel (rompería el proxy de otras tools).
+      headers['Cross-Origin-Opener-Policy'] = 'same-origin';
+      headers['Cross-Origin-Embedder-Policy'] = 'require-corp';
+      headers['Cross-Origin-Resource-Policy'] = 'same-origin';
+    }
+    res.writeHead(200, headers);
     res.end(data);
   });
+}
+
+// Trae el godot.editor.wasm desde el Release de GitHub (donde sí cabe,
+// a diferencia de la subida normal de archivos) y lo transmite tal cual
+// fuera un archivo propio, con los encabezados que Godot necesita.
+function serveGodotWasm(res, targetUrl = GODOT_WASM_RELEASE_URL, redirectsLeft = 5) {
+  let parsed;
+  try {
+    parsed = new URL(targetUrl);
+  } catch (e) {
+    res.writeHead(400, { 'Content-Type': 'text/plain' });
+    res.end('URL de release inválida');
+    return;
+  }
+
+  const client = parsed.protocol === 'https:' ? https : http;
+  const options = {
+    method: 'GET',
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PanelHerramientas/1.0)' },
+  };
+
+  const upstream = client.request(parsed, options, (upstreamRes) => {
+    if ([301, 302, 303, 307, 308].includes(upstreamRes.statusCode) && upstreamRes.headers.location && redirectsLeft > 0) {
+      upstreamRes.resume();
+      serveGodotWasm(res, upstreamRes.headers.location, redirectsLeft - 1);
+      return;
+    }
+    if (upstreamRes.statusCode !== 200) {
+      res.writeHead(upstreamRes.statusCode || 502, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('No se pudo obtener godot.editor.wasm del Release (código ' + upstreamRes.statusCode + '). Revisa que el Release y el asset existan con esos nombres exactos.');
+      return;
+    }
+    const headers = {
+      'Content-Type': 'application/wasm',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Resource-Policy': 'same-origin',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    };
+    if (upstreamRes.headers['content-length']) {
+      headers['Content-Length'] = upstreamRes.headers['content-length'];
+    }
+    res.writeHead(200, headers);
+    upstreamRes.pipe(res); // streaming: no se carga el archivo entero en memoria
+  });
+
+  upstream.on('error', (err) => {
+    res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('No se pudo conectar al Release de GitHub (' + err.message + ')');
+  });
+
+  upstream.end();
 }
 
 function fetchThroughProxy(targetUrl, res, redirectsLeft = 5) {
@@ -213,6 +286,11 @@ const server = http.createServer((req, res) => {
       return;
     }
     fetchThroughProxy(target, res);
+    return;
+  }
+
+  if (reqUrl.pathname === '/godot-editor/godot.editor.wasm') {
+    serveGodotWasm(res);
     return;
   }
 
