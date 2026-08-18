@@ -37,9 +37,9 @@ const DATA = [
       { name: "PixelForge", url: "https://www.pixelforgegames.net/" },
       { name: "GDevelop", url: "https://editor.gdevelop.io/" },
       { name: "Construct 3", url: "https://editor.construct.net/" },
-      { name: "Flowlab", url: "https://flowlab.io/games/mine" },
+      { name: "Flowlab", url: "https://flowlab.io/" },
       { name: "Bitsy", url: "https://make.bitsy.org/editor/" },
-      { name: "Godot Web Editor", url: "https://editor.godotengine.org/" },
+      { name: "Godot Web Editor (autoalojado)", url: "/godot-editor/godot.editor.html", direct: true },
     ]
   },
 ];
@@ -129,7 +129,9 @@ function init() {
     statusDot.classList.add('loading');
 
     const iframe = document.createElement('iframe');
-    iframe.src = '/proxy?url=' + encodeURIComponent(tool.url);
+    // Herramientas "direct" (autoalojadas en nuestro propio dominio, como
+    // Godot) cargan tal cual, sin pasar por /proxy — ya son same-origin.
+    iframe.src = tool.direct ? tool.url : ('/proxy?url=' + encodeURIComponent(tool.url));
     iframe.allow = "clipboard-write; fullscreen";
     viewport.appendChild(iframe);
 
