@@ -134,7 +134,7 @@ function serveStatic(pathname, res) {
 // Trae el godot.editor.wasm desde el Release de GitHub (donde sí cabe,
 // a diferencia de la subida normal de archivos) y lo transmite tal cual
 // fuera un archivo propio, con los encabezados que Godot necesita.
-function serveGodotWasm(res, targetUrl = GODOT_WASM_RELEASE_URL, redirectsLeft = 5) {
+function serveGodotWasm(req, res, targetUrl = GODOT_WASM_RELEASE_URL, redirectsLeft = 5) {
   let parsed;
   try {
     parsed = new URL(targetUrl);
@@ -145,18 +145,20 @@ function serveGodotWasm(res, targetUrl = GODOT_WASM_RELEASE_URL, redirectsLeft =
   }
 
   const client = parsed.protocol === 'https:' ? https : http;
-  const options = {
-    method: 'GET',
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PanelHerramientas/1.0)' },
-  };
+  const upstreamHeaders = { 'User-Agent': 'Mozilla/5.0 (compatible; PanelHerramientas/1.0)' };
+  // Reenvía la petición Range del navegador (carga parcial/streaming),
+  // que es como suelen pedir los archivos grandes los cargadores WASM.
+  if (req.headers.range) upstreamHeaders.Range = req.headers.range;
+
+  const options = { method: 'GET', headers: upstreamHeaders };
 
   const upstream = client.request(parsed, options, (upstreamRes) => {
     if ([301, 302, 303, 307, 308].includes(upstreamRes.statusCode) && upstreamRes.headers.location && redirectsLeft > 0) {
       upstreamRes.resume();
-      serveGodotWasm(res, upstreamRes.headers.location, redirectsLeft - 1);
+      serveGodotWasm(req, res, upstreamRes.headers.location, redirectsLeft - 1);
       return;
     }
-    if (upstreamRes.statusCode !== 200) {
+    if (upstreamRes.statusCode !== 200 && upstreamRes.statusCode !== 206) {
       res.writeHead(upstreamRes.statusCode || 502, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('No se pudo obtener godot.editor.wasm del Release (código ' + upstreamRes.statusCode + '). Revisa que el Release y el asset existan con esos nombres exactos.');
       return;
@@ -167,11 +169,11 @@ function serveGodotWasm(res, targetUrl = GODOT_WASM_RELEASE_URL, redirectsLeft =
       'Cross-Origin-Embedder-Policy': 'require-corp',
       'Cross-Origin-Resource-Policy': 'same-origin',
       'Cache-Control': 'public, max-age=31536000, immutable',
+      'Accept-Ranges': 'bytes',
     };
-    if (upstreamRes.headers['content-length']) {
-      headers['Content-Length'] = upstreamRes.headers['content-length'];
-    }
-    res.writeHead(200, headers);
+    if (upstreamRes.headers['content-length']) headers['Content-Length'] = upstreamRes.headers['content-length'];
+    if (upstreamRes.headers['content-range']) headers['Content-Range'] = upstreamRes.headers['content-range'];
+    res.writeHead(upstreamRes.statusCode, headers);
     upstreamRes.pipe(res); // streaming: no se carga el archivo entero en memoria
   });
 
@@ -290,7 +292,7 @@ const server = http.createServer((req, res) => {
   }
 
   if (reqUrl.pathname === '/godot-editor/godot.editor.wasm') {
-    serveGodotWasm(res);
+    serveGodotWasm(req, res);
     return;
   }
 
@@ -300,3 +302,4 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`Panel de herramientas corriendo en http://localhost:${PORT}`);
 });
+
