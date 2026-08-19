@@ -1,3 +1,10 @@
+// Registra el Service Worker que intercepta peticiones dinámicas de las
+// herramientas embebidas (fetch/XHR que hacen después de cargar) y las
+// redirige por el proxy, evitando bloqueos por CORS.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => { /* si falla, las tools igual cargan, solo sin este arreglo extra */ });
+}
+
 const DATA = [
   {
     name: "Editores de código",
@@ -39,7 +46,7 @@ const DATA = [
       { name: "Construct 3", url: "https://editor.construct.net/" },
       { name: "Flowlab", url: "https://flowlab.io/" },
       { name: "Bitsy", url: "https://make.bitsy.org/editor/" },
-      { name: "Godot Web Editor (autoalojado)", url: "/godot-editor/godot.editor.html", direct: true },
+      { name: "Godot Web Editor (autoalojado)", url: "/godot-editor/godot.editor.html", direct: true, requiresIsolatedTab: true },
     ]
   },
 ];
@@ -198,6 +205,21 @@ function init() {
 
     openNewBtn.href = tool.url;
     openNewBtn.style.display = 'inline-block';
+
+    if (tool.requiresIsolatedTab) {
+      // Esta herramienta necesita ser la pestaña PRINCIPAL del navegador
+      // para funcionar (requiere SharedArrayBuffer/aislamiento de origen
+      // cruzado, algo que un iframe anidado no puede obtener aquí). No
+      // tiene sentido intentar embeberla — mostramos un aviso directo.
+      viewport.innerHTML = `
+        <div class="empty-state">
+          <div class="glyph">⧉</div>
+          <p><strong>${tool.name}</strong> necesita abrirse como pestaña principal del navegador para funcionar (usa una función de seguridad que un panel embebido no puede tener). Usa el botón de la derecha para abrirla — ahí funciona completa.</p>
+        </div>
+      `;
+      return;
+    }
+
     statusDot.classList.add('loading');
 
     const iframe = document.createElement('iframe');
