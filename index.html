@@ -13,7 +13,7 @@
     <div class="brand">
       <div class="brand-mark">// taller</div>
       <div class="brand-title">Panel de herramientas</div>
-      <div class="brand-sub">Editores, arte y motores en un solo lugar, api gratis para ia: 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, moonshotai/Kimi-K3:together</div>
+      <div class="brand-sub">Editores, arte y motores en un solo lugar</div>
     </div>
 
     <div id="categories"></div>
@@ -28,6 +28,7 @@
       <span class="status-dot" id="statusDot"></span>
       <span class="current-tool" id="currentTool">Elige una herramienta →</span>
       <button class="fullscreen-btn" id="fullscreenBtn" style="display:none;" title="Pantalla completa">⛶ Pantalla completa</button>
+      <button class="debug-btn" id="debugBtn" style="display:none;" title="Consola de depuración">🐞 <span id="debugCount"></span></button>
       <a class="open-new" id="openNewBtn" target="_blank" rel="noopener" style="display:none;">Abrir en pestaña nueva ↗</a>
     </div>
     <div class="viewport-wrap">
@@ -36,6 +37,16 @@
           <div class="glyph">[ ]</div>
           <p>Selecciona una herramienta de la izquierda para cargarla aquí. Cada categoría tiene más de una opción por si alguna falla.</p>
         </div>
+      </div>
+      <div class="debug-panel" id="debugPanel" style="display:none;">
+        <div class="debug-panel-header">
+          <span>Consola de depuración</span>
+          <div>
+            <button id="debugClear">Limpiar</button>
+            <button id="debugClose">Cerrar ✕</button>
+          </div>
+        </div>
+        <div class="debug-log" id="debugLog"></div>
       </div>
     </div>
   </main>
