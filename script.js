@@ -52,9 +52,75 @@ function init() {
   const openNewBtn = document.getElementById('openNewBtn');
   const statusDot = document.getElementById('statusDot');
   const fullscreenBtn = document.getElementById('fullscreenBtn');
+  const debugBtn = document.getElementById('debugBtn');
+  const debugCount = document.getElementById('debugCount');
+  const debugPanel = document.getElementById('debugPanel');
+  const debugLog = document.getElementById('debugLog');
 
   let activeItemEl = null;
   let hintTimer = null;
+  let debugErrorCount = 0;
+
+  debugBtn.addEventListener('click', () => {
+    debugPanel.style.display = debugPanel.style.display === 'none' ? 'flex' : 'none';
+  });
+  document.getElementById('debugClose').addEventListener('click', () => {
+    debugPanel.style.display = 'none';
+  });
+  document.getElementById('debugClear').addEventListener('click', () => {
+    debugLog.innerHTML = '';
+    debugErrorCount = 0;
+    debugCount.textContent = '';
+    debugBtn.classList.remove('has-errors');
+  });
+
+  function logDebug(kind, message) {
+    const time = new Date().toLocaleTimeString();
+    const line = document.createElement('div');
+    line.className = 'debug-line ' + kind;
+    line.textContent = `[${time}] ${message}`;
+    debugLog.appendChild(line);
+    debugLog.scrollTop = debugLog.scrollHeight;
+    if (kind === 'err' || kind === 'rej') {
+      debugErrorCount++;
+      debugCount.textContent = debugErrorCount;
+      debugBtn.classList.add('has-errors');
+      debugPanel.style.display = 'flex'; // se abre solo ante el primer error real
+    }
+  }
+
+  // Intenta "escuchar" errores dentro de un iframe same-origin (como
+  // Godot, que ahora vive en nuestro propio dominio). Con sitios de
+  // otros dominios esto falla en silencio por seguridad del navegador
+  // — es normal y esperado, no es un bug.
+  function attachDebugCapture(iframe, toolName) {
+    debugBtn.style.display = 'inline-block';
+    logDebug('info', `Cargando "${toolName}"...`);
+    iframe.addEventListener('load', () => {
+      let win;
+      try {
+        win = iframe.contentWindow;
+        // Esto lanza un error si el iframe es de otro dominio (normal).
+        void win.document;
+      } catch (e) {
+        logDebug('info', `"${toolName}" es de otro sitio — no se puede leer su consola desde aquí.`);
+        return;
+      }
+      win.addEventListener('error', (e) => {
+        logDebug('err', `${e.message} — ${(e.filename || '').split('/').pop()}:${e.lineno || '?'}`);
+      });
+      win.addEventListener('unhandledrejection', (e) => {
+        logDebug('rej', 'Promesa sin manejar: ' + String(e.reason && e.reason.message || e.reason));
+      });
+      try {
+        const origError = win.console.error.bind(win.console);
+        win.console.error = (...args) => { origError(...args); logDebug('err', args.map(String).join(' ')); };
+        const origWarn = win.console.warn.bind(win.console);
+        win.console.warn = (...args) => { origWarn(...args); logDebug('warn', args.map(String).join(' ')); };
+      } catch (e) { /* algunos navegadores bloquean sobreescribir console, se ignora */ }
+      logDebug('info', `Conectado a la consola de "${toolName}".`);
+    });
+  }
 
   fullscreenBtn.addEventListener('click', () => {
     if (!document.fullscreenElement) {
@@ -111,6 +177,12 @@ function init() {
     statusDot.classList.remove('loading');
     viewport.innerHTML = '';
     fullscreenBtn.style.display = 'inline-block';
+    debugBtn.style.display = 'none';
+    debugPanel.style.display = 'none';
+    debugLog.innerHTML = '';
+    debugErrorCount = 0;
+    debugCount.textContent = '';
+    debugBtn.classList.remove('has-errors');
 
     if (tool.type === 'native') {
       openNewBtn.style.display = 'none';
@@ -134,6 +206,7 @@ function init() {
     iframe.src = tool.direct ? tool.url : ('/proxy?url=' + encodeURIComponent(tool.url));
     iframe.allow = "clipboard-write; fullscreen";
     viewport.appendChild(iframe);
+    attachDebugCapture(iframe, tool.name);
 
     iframe.addEventListener('load', () => statusDot.classList.remove('loading'));
 
