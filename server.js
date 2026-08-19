@@ -277,6 +277,62 @@ function fetchThroughProxy(targetUrl, res, redirectsLeft = 5) {
   upstream.end();
 }
 
+// Proxy "crudo": reenvía cualquier método (GET/POST/PUT/...), cuerpo y
+// tipo de contenido tal cual, sin intentar reescribir nada. Lo usa el
+// Service Worker (sw.js) para las peticiones dinámicas (fetch/XHR) que
+// una herramienta hace después de haber cargado — cosas como JSON de
+// una API, que no tiene sentido tratar de reescribir como si fuera HTML.
+function proxyRawRequest(req, res, targetUrl, redirectsLeft = 5) {
+  let parsed;
+  try {
+    parsed = new URL(targetUrl);
+  } catch (e) {
+    res.writeHead(400, { 'Content-Type': 'text/plain' });
+    res.end('URL inválida');
+    return;
+  }
+
+  const client = parsed.protocol === 'https:' ? https : http;
+
+  const forwardHeaders = { 'User-Agent': 'Mozilla/5.0 (compatible; PanelHerramientas/1.0)' };
+  ['content-type', 'accept', 'authorization', 'x-requested-with'].forEach((h) => {
+    if (req.headers[h]) forwardHeaders[h] = req.headers[h];
+  });
+
+  const options = { method: req.method, headers: forwardHeaders };
+
+  const upstream = client.request(parsed, options, (upstreamRes) => {
+    if ([301, 302, 303, 307, 308].includes(upstreamRes.statusCode) && upstreamRes.headers.location && redirectsLeft > 0) {
+      upstreamRes.resume();
+      const nextUrl = new URL(upstreamRes.headers.location, parsed).toString();
+      proxyRawRequest(req, res, nextUrl, redirectsLeft - 1);
+      return;
+    }
+    const headers = {};
+    for (const [key, value] of Object.entries(upstreamRes.headers)) {
+      const lower = key.toLowerCase();
+      // Solo quitamos lo que podría causar problemas; el resto (incluido
+      // content-encoding) se reenvía intacto para no corromper el body.
+      if (!['content-security-policy', 'x-frame-options', 'set-cookie'].includes(lower)) {
+        headers[key] = value;
+      }
+    }
+    res.writeHead(upstreamRes.statusCode || 200, headers);
+    upstreamRes.pipe(res);
+  });
+
+  upstream.on('error', (err) => {
+    res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('Error de proxy-raw: ' + err.message);
+  });
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    req.pipe(upstream);
+  } else {
+    upstream.end();
+  }
+}
+
 const server = http.createServer((req, res) => {
   const reqUrl = new URL(req.url, `http://localhost:${PORT}`);
 
@@ -291,6 +347,17 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (reqUrl.pathname === '/proxy-raw') {
+    const target = reqUrl.searchParams.get('url');
+    if (!target) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Falta el parámetro url');
+      return;
+    }
+    proxyRawRequest(req, res, target);
+    return;
+  }
+
   if (reqUrl.pathname === '/godot-editor/godot.editor.wasm') {
     serveGodotWasm(req, res);
     return;
@@ -302,4 +369,3 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`Panel de herramientas corriendo en http://localhost:${PORT}`);
 });
-
