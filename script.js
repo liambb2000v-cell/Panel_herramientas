@@ -49,6 +49,18 @@ const DATA = [
       { name: "Godot Web Editor (autoalojado)", url: "/godot-editor/godot.editor.html", direct: true, requiresIsolatedTab: true },
     ]
   },
+  {
+    name: "Descanso",
+    color: "#8BC5A3",
+    tools: [
+      { name: "Itch.io — Pixel Art (gratis)", url: "https://itch.io/games/free/tag-pixel-art" },
+      { name: "CrazyGames — Pixel", url: "https://www.crazygames.com/t/pixel" },
+      { name: "2048", url: "https://play2048.co/" },
+      { name: "Ajedrez (Lichess)", url: "https://lichess.org/" },
+      { name: "Cookie Clicker", url: "https://orteil.dashnet.org/cookieclicker/" },
+      { name: "Little Alchemy 2", url: "https://littlealchemy2.com/" },
+    ]
+  },
 ];
 
 function init() {
