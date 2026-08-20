@@ -237,6 +237,12 @@ function fetchThroughProxy(targetUrl, res, redirectsLeft = 5) {
       if (contentType.includes('text/html')) {
         let html = buffer.toString('utf8');
         const baseUrl = parsed.toString();
+        // Quita cualquier <meta http-equiv="Content-Security-Policy">
+        // que el sitio traiga incrustada en su propio HTML — esa regla
+        // le diría al navegador "solo carga recursos desde mi dominio
+        // real", lo cual bloquearía justo los recursos que acabamos de
+        // reescribir para que pasen por nuestro proxy.
+        html = html.replace(/<meta\s+http-equiv=["']Content-Security-Policy["'][^>]*>/gi, '');
         // Reescribe TODOS los recursos (CSS, imágenes, scripts, fuentes)
         // para que pasen por el proxy, evitando bloqueos por CORP/CORS
         // cuando el sitio y nuestro dominio son distintos.
