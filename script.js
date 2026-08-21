@@ -53,7 +53,7 @@ const DATA = [
     name: "Descanso",
     color: "#8BC5A3",
     tools: [
-      { name: "Terraria (Scratch, por griffpatch)", url: "https://scratch.mit.edu/projects/322341152/embed" },
+      { name: "Terraria (Scratch, por griffpatch)", url: "https://scratch.mit.edu/projects/322341152/embed", noProxy: true },
       { name: "Terrarium (Terraria en el navegador)", url: "https://terraria.mercurywork.shop/", requiresIsolatedTab: true },
       { name: "Itch.io — Pixel Art (gratis)", url: "https://itch.io/games/free/tag-pixel-art" },
       { name: "CrazyGames — Pixel", url: "https://www.crazygames.com/t/pixel" },
@@ -239,7 +239,7 @@ function init() {
     const iframe = document.createElement('iframe');
     // Herramientas "direct" (autoalojadas en nuestro propio dominio, como
     // Godot) cargan tal cual, sin pasar por /proxy — ya son same-origin.
-    iframe.src = tool.direct ? tool.url : ('/proxy?url=' + encodeURIComponent(tool.url));
+    iframe.src = (tool.direct || tool.noProxy) ? tool.url : ('/proxy?url=' + encodeURIComponent(tool.url));
     iframe.allow = "clipboard-write; fullscreen";
     viewport.appendChild(iframe);
     attachDebugCapture(iframe, tool.name);
