@@ -21,6 +21,7 @@ const DATA = [
     color: "#E3A857",
     tools: [
       { name: "Editor de pixel art (integrado)", type: "native" },
+      { name: "Animador de figuras de palo (integrado)", type: "stick-anim" },
       { name: "Piskel", url: "https://www.piskelapp.com/p/create/" },
       { name: "Pixilart", url: "https://www.pixilart.com/draw" },
       { name: "Lospec Pixel Editor", url: "https://lospec.com/pixel-editor/" },
@@ -208,6 +209,12 @@ function init() {
     if (tool.type === 'native') {
       openNewBtn.style.display = 'none';
       renderPixelEditor(viewport);
+      return;
+    }
+
+    if (tool.type === 'stick-anim') {
+      openNewBtn.style.display = 'none';
+      renderStickAnimator(viewport);
       return;
     }
 
@@ -552,5 +559,235 @@ function renderAIChat(viewport) {
   });
 
   loadConfig();
+}
+
+function renderStickAnimator(viewport) {
+  viewport.innerHTML = `
+    <div class="stick-anim">
+      <div class="sa-toolbar">
+        <button class="sa-play">▶ Reproducir</button>
+        <label class="sa-field">FPS
+          <input type="number" class="sa-fps" value="6" min="1" max="24" style="width:48px;">
+        </label>
+        <label class="sa-field"><input type="checkbox" class="sa-onion" checked> Onion skin</label>
+        <button class="sa-download">Descargar frame (PNG)</button>
+      </div>
+      <div class="sa-canvas-wrap">
+        <canvas class="sa-canvas"></canvas>
+      </div>
+      <div class="sa-frames-row">
+        <div class="sa-frames" id="saFrames"></div>
+        <button class="sa-frame-add">+ Frame</button>
+        <button class="sa-frame-del">🗑 Borrar frame</button>
+      </div>
+    </div>
+  `;
+
+  const root = viewport.querySelector('.stick-anim');
+  const canvas = root.querySelector('.sa-canvas');
+  const ctx = canvas.getContext('2d');
+  const framesEl = root.querySelector('#saFrames');
+  const playBtn = root.querySelector('.sa-play');
+  const fpsInput = root.querySelector('.sa-fps');
+  const onionCheck = root.querySelector('.sa-onion');
+
+  const LEN = { torso: 70, head: 36, upperArm: 35, lowerArm: 35, upperLeg: 45, lowerLeg: 45 };
+
+  function defaultPose() {
+    return {
+      hipX: 240, hipY: 150,
+      angles: {
+        torso: -90, head: -90,
+        lUpperArm: 65, lLowerArm: 75,
+        rUpperArm: 115, rLowerArm: 105,
+        lUpperLeg: 100, lLowerLeg: 95,
+        rUpperLeg: 80, rLowerLeg: 85,
+      },
+    };
+  }
+
+  let frames = [defaultPose()];
+  let activeFrame = 0;
+  let dragging = null; // { handle, parentKey, angleKey } o { handle:'hip' }
+  let playing = false;
+  let playTimer = null;
+
+  function pt(base, angleDeg, len) {
+    const rad = (angleDeg * Math.PI) / 180;
+    return { x: base.x + Math.cos(rad) * len, y: base.y + Math.sin(rad) * len };
+  }
+
+  function computePoints(pose) {
+    const hip = { x: pose.hipX, y: pose.hipY };
+    const neck = pt(hip, pose.angles.torso, LEN.torso);
+    const headTop = pt(neck, pose.angles.head, LEN.head);
+    const lElbow = pt(neck, pose.angles.lUpperArm, LEN.upperArm);
+    const lHand = pt(lElbow, pose.angles.lLowerArm, LEN.lowerArm);
+    const rElbow = pt(neck, pose.angles.rUpperArm, LEN.upperArm);
+    const rHand = pt(rElbow, pose.angles.rLowerArm, LEN.lowerArm);
+    const lKnee = pt(hip, pose.angles.lUpperLeg, LEN.upperLeg);
+    const lFoot = pt(lKnee, pose.angles.lLowerLeg, LEN.lowerLeg);
+    const rKnee = pt(hip, pose.angles.rUpperLeg, LEN.upperLeg);
+    const rFoot = pt(rKnee, pose.angles.rLowerLeg, LEN.lowerLeg);
+    return { hip, neck, headTop, lElbow, lHand, rElbow, rHand, lKnee, lFoot, rKnee, rFoot };
+  }
+
+  // handle -> de dónde saca su punto "padre" y qué ángulo controla
+  const HANDLES = [
+    { name: 'neck', parent: 'hip', angleKey: 'torso' },
+    { name: 'headTop', parent: 'neck', angleKey: 'head' },
+    { name: 'lElbow', parent: 'neck', angleKey: 'lUpperArm' },
+    { name: 'lHand', parent: 'lElbow', angleKey: 'lLowerArm' },
+    { name: 'rElbow', parent: 'neck', angleKey: 'rUpperArm' },
+    { name: 'rHand', parent: 'rElbow', angleKey: 'rLowerArm' },
+    { name: 'lKnee', parent: 'hip', angleKey: 'lUpperLeg' },
+    { name: 'lFoot', parent: 'lKnee', angleKey: 'lLowerLeg' },
+    { name: 'rKnee', parent: 'hip', angleKey: 'rUpperLeg' },
+    { name: 'rFoot', parent: 'rKnee', angleKey: 'rLowerLeg' },
+  ];
+
+  function drawFigure(points, color, handles) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    function line(a, b) {
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+    line(points.hip, points.neck);
+    line(points.neck, points.lElbow); line(points.lElbow, points.lHand);
+    line(points.neck, points.rElbow); line(points.rElbow, points.rHand);
+    line(points.hip, points.lKnee); line(points.lKnee, points.lFoot);
+    line(points.hip, points.rKnee); line(points.rKnee, points.rFoot);
+    const headR = LEN.head / 2.2;
+    const headCenter = { x: (points.neck.x + points.headTop.x) / 2, y: (points.neck.y + points.headTop.y) / 2 };
+    ctx.beginPath();
+    ctx.arc(headCenter.x, headCenter.y, headR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    if (handles) {
+      ctx.fillStyle = '#E3A857';
+      [points.hip, points.neck, points.headTop, points.lElbow, points.lHand, points.rElbow, points.rHand, points.lKnee, points.lFoot, points.rKnee, points.rFoot].forEach((p) => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (onionCheck.checked && activeFrame > 0) {
+      drawFigure(computePoints(frames[activeFrame - 1]), 'rgba(255,255,255,0.15)', false);
+    }
+    drawFigure(computePoints(frames[activeFrame]), '#EDEAE3', !playing);
+  }
+
+  function renderFramesList() {
+    framesEl.innerHTML = '';
+    frames.forEach((f, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'sa-frame-btn' + (i === activeFrame ? ' active' : '');
+      btn.textContent = i + 1;
+      btn.addEventListener('click', () => { activeFrame = i; render(); renderFramesList(); });
+      framesEl.appendChild(btn);
+    });
+  }
+
+  function resizeCanvas() {
+    const wrap = root.querySelector('.sa-canvas-wrap');
+    canvas.width = wrap.clientWidth;
+    canvas.height = wrap.clientHeight;
+    render();
+  }
+
+  function getPointer(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (playing) return;
+    const p = getPointer(e);
+    const points = computePoints(frames[activeFrame]);
+    if (Math.hypot(p.x - points.hip.x, p.y - points.hip.y) < 14) {
+      dragging = { handle: 'hip' };
+      canvas.setPointerCapture(e.pointerId);
+      return;
+    }
+    for (const h of HANDLES) {
+      const hp = points[h.name];
+      if (Math.hypot(p.x - hp.x, p.y - hp.y) < 14) {
+        dragging = h;
+        canvas.setPointerCapture(e.pointerId);
+        return;
+      }
+    }
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const p = getPointer(e);
+    const pose = frames[activeFrame];
+    if (dragging.handle === 'hip') {
+      pose.hipX = p.x; pose.hipY = p.y;
+    } else {
+      const points = computePoints(pose);
+      const parentPoint = points[dragging.parent];
+      const angle = (Math.atan2(p.y - parentPoint.y, p.x - parentPoint.x) * 180) / Math.PI;
+      pose.angles[dragging.angleKey] = angle;
+    }
+    render();
+  });
+
+  canvas.addEventListener('pointerup', () => { dragging = null; });
+  canvas.addEventListener('pointercancel', () => { dragging = null; });
+
+  playBtn.addEventListener('click', () => {
+    playing = !playing;
+    playBtn.textContent = playing ? '⏸ Pausar' : '▶ Reproducir';
+    if (playing) {
+      const fps = Math.max(1, parseInt(fpsInput.value, 10) || 6);
+      playTimer = setInterval(() => {
+        activeFrame = (activeFrame + 1) % frames.length;
+        render();
+        renderFramesList();
+      }, 1000 / fps);
+    } else {
+      clearInterval(playTimer);
+      render();
+    }
+  });
+
+  root.querySelector('.sa-frame-add').addEventListener('click', () => {
+    const copy = JSON.parse(JSON.stringify(frames[activeFrame]));
+    frames.splice(activeFrame + 1, 0, copy);
+    activeFrame++;
+    render();
+    renderFramesList();
+  });
+
+  root.querySelector('.sa-frame-del').addEventListener('click', () => {
+    if (frames.length <= 1) return;
+    frames.splice(activeFrame, 1);
+    activeFrame = Math.max(0, activeFrame - 1);
+    render();
+    renderFramesList();
+  });
+
+  root.querySelector('.sa-download').addEventListener('click', () => {
+    const link = document.createElement('a');
+    link.download = `frame-${activeFrame + 1}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  onionCheck.addEventListener('change', render);
+  window.addEventListener('resize', resizeCanvas);
+
+  resizeCanvas();
+  renderFramesList();
 }
 
