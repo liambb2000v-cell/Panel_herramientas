@@ -129,8 +129,14 @@ function init() {
         return;
       }
       win.addEventListener('error', (e) => {
-        logDebug('err', `${e.message} — ${(e.filename || '').split('/').pop()}:${e.lineno || '?'}`);
-      });
+        if (e.target && e.target !== win && e.target.tagName) {
+          // Fallo de CARGA de un recurso (CSS/JS/imagen), no un error de código.
+          const src = e.target.src || e.target.href || '(sin URL)';
+          logDebug('err', `Recurso falló al cargar: <${e.target.tagName.toLowerCase()}> ${src}`);
+        } else {
+          logDebug('err', `${e.message} — ${(e.filename || '').split('/').pop()}:${e.lineno || '?'}`);
+        }
+      }, true); // capture:true — los errores de recursos no burbujean normal
       win.addEventListener('unhandledrejection', (e) => {
         logDebug('rej', 'Promesa sin manejar: ' + String(e.reason && e.reason.message || e.reason));
       });
@@ -790,4 +796,3 @@ function renderStickAnimator(viewport) {
   resizeCanvas();
   renderFramesList();
 }
-
