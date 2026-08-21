@@ -254,3 +254,44 @@ html,body{margin:0;height:100%;background:var(--bg-base);color:var(--text);font-
 }
 .ai-send:disabled{opacity:0.5;cursor:default;}
 
+/* ANIMADOR DE FIGURAS DE PALO (herramienta nativa) */
+.stick-anim{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+}
+.sa-toolbar{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:10px 12px;border-bottom:1px solid var(--border);
+  background:var(--bg-panel);
+}
+.sa-field{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);}
+.sa-field input[type="number"]{
+  background:var(--bg-raised);color:var(--text);border:1px solid var(--border);
+  border-radius:6px;padding:4px 6px;
+}
+.sa-toolbar button{
+  font-family:'Inter',sans-serif;font-size:12.5px;font-weight:500;
+  background:var(--bg-raised);color:var(--text);border:1px solid var(--border);
+  padding:7px 12px;border-radius:6px;cursor:pointer;
+}
+.sa-toolbar button:hover{border-color:var(--amber);}
+.sa-play{background:var(--amber) !important;color:var(--bg-base) !important;border-color:var(--amber) !important;}
+
+.sa-canvas-wrap{flex:1;min-height:0;padding:10px;}
+.sa-canvas{width:100%;height:100%;background:#0e0f13;border-radius:8px;touch-action:none;cursor:pointer;}
+
+.sa-frames-row{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;
+  border-top:1px solid var(--border);background:var(--bg-panel);
+}
+.sa-frames{display:flex;gap:6px;overflow-x:auto;flex:1;}
+.sa-frame-btn{
+  min-width:32px;height:32px;border-radius:6px;
+  background:var(--bg-raised);color:var(--text);border:1px solid var(--border);
+  font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;
+}
+.sa-frame-btn.active{background:var(--amber);color:var(--bg-base);border-color:var(--amber);}
+.sa-frame-add, .sa-frame-del{
+  font-family:'Inter',sans-serif;font-size:12px;
+  background:var(--bg-raised);color:var(--text);border:1px solid var(--border);
+  padding:6px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;
+}
