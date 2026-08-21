@@ -202,6 +202,11 @@ function fetchThroughProxy(targetUrl, res, redirectsLeft = 5) {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      // Varios sitios (itch.io, CrazyGames, etc.) protegen sus CSS/JS/
+      // imágenes verificando que la petición "venga" de su propio
+      // dominio. Sin esto, esos archivos se rechazan en silencio y la
+      // página se ve sin estilos, aunque la ruta esté bien armada.
+      'Referer': parsed.origin + '/',
     },
   };
 
