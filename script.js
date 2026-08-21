@@ -53,6 +53,7 @@ const DATA = [
     name: "Descanso",
     color: "#8BC5A3",
     tools: [
+      { name: "Terraria (Scratch, por griffpatch)", url: "https://scratch.mit.edu/projects/322341152/embed" },
       { name: "Terrarium (Terraria en el navegador)", url: "https://terraria.mercurywork.shop/", requiresIsolatedTab: true },
       { name: "Itch.io — Pixel Art (gratis)", url: "https://itch.io/games/free/tag-pixel-art" },
       { name: "CrazyGames — Pixel", url: "https://www.crazygames.com/t/pixel" },
